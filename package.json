@@ -1,0 +1,40 @@
+{
+  "name": "forgejo-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for Forgejo - enables AI agents to interact with Forgejo instances",
+  "main": "dist/index.js",
+  "bin": {
+    "forgejo-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "lint": "eslint src --ext .ts",
+    "test": "jest"
+  },
+  "keywords": ["mcp", "forgejo", "gitea", "ai", "agent"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.28.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "jest": "^29.0.0",
+    "ts-jest": "^29.0.0",
+    "@types/jest": "^29.5.0",
+    "typescript": "^5.7.0"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "testMatch": ["**/__tests__/**/*.test.ts"],
+    "moduleNameMapper": {
+      "^(.*)\\.js$": "$1"
+    }
+  }
+}
