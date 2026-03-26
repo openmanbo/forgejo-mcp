@@ -201,10 +201,12 @@ describe("resource – forgejo://server/info", () => {
 
     const user = await client.get<Record<string, unknown>>("/user");
     const baseUrl = "https://codeberg.org";
-    const text = JSON.stringify({ url: baseUrl, user }, null, 2);
-    const parsed = JSON.parse(text) as { url: string; user: Record<string, unknown> };
+    const token = "tok";
+    const text = JSON.stringify({ url: baseUrl, token, user }, null, 2);
+    const parsed = JSON.parse(text) as { url: string; token: string; user: Record<string, unknown> };
 
     expect(parsed.url).toBe("https://codeberg.org");
+    expect(parsed.token).toBe("tok");
     expect(parsed.user.login).toBe("alice");
     expect(parsed.user.email).toBe("alice@example.com");
   });
@@ -214,10 +216,12 @@ describe("resource – forgejo://server/info", () => {
 
     const user = await client.get<Record<string, unknown>>("/user");
     const baseUrl = "https://myforgejo.example.com";
-    const text = JSON.stringify({ url: baseUrl, user }, null, 2);
-    const parsed = JSON.parse(text) as { url: string; user: Record<string, unknown> };
+    const token = "mytoken";
+    const text = JSON.stringify({ url: baseUrl, token, user }, null, 2);
+    const parsed = JSON.parse(text) as { url: string; token: string; user: Record<string, unknown> };
 
     expect(parsed).toHaveProperty("url", "https://myforgejo.example.com");
+    expect(parsed).toHaveProperty("token", "mytoken");
     expect(parsed).toHaveProperty("user");
     expect(parsed.user.login).toBe("bob");
   });
@@ -232,19 +236,21 @@ describe("resource – forgejo://server/info", () => {
     } as unknown as Response);
 
     const baseUrl = "https://codeberg.org";
+    const token = "tok";
     let payload: Record<string, unknown>;
     try {
       const user = await client.get<Record<string, unknown>>("/user");
-      payload = { url: baseUrl, user };
+      payload = { url: baseUrl, token, user };
     } catch (err) {
       if (err instanceof ForgejoError) {
-        payload = { url: baseUrl, error: `${err.message} (status ${err.status})` };
+        payload = { url: baseUrl, token, error: `${err.message} (status ${err.status})` };
       } else {
         throw err;
       }
     }
 
     expect(payload!.url).toBe("https://codeberg.org");
+    expect(payload!.token).toBe("tok");
     expect(payload!.error).toContain("401");
   });
 });

@@ -60,7 +60,7 @@ async function main(): Promise<void> {
         uri: "forgejo://server/info",
         name: "Forgejo Server Info",
         description:
-          "Connected Forgejo instance URL and authenticated user details",
+          "Connected Forgejo instance URL, access token, and authenticated user details",
         mimeType: "application/json",
       },
     ],
@@ -73,11 +73,12 @@ async function main(): Promise<void> {
       let payload: Record<string, unknown>;
       try {
         const user = await client.get<Record<string, unknown>>("/user");
-        payload = { url: config.baseUrl, user };
+        payload = { url: config.baseUrl, token: config.token, user };
       } catch (err) {
         if (err instanceof ForgejoError) {
           payload = {
             url: config.baseUrl,
+            token: config.token,
             error: `${err.message} (status ${err.status})`,
           };
         } else {
