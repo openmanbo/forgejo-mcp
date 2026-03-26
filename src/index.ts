@@ -15,8 +15,10 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { ForgejoClient } from "./forgejo-client.js";
+import { ForgejoClient, ForgejoError } from "./forgejo-client.js";
 import { TOOLS } from "./tools.js";
 import { handleTool } from "./handlers.js";
 
@@ -48,8 +50,52 @@ async function main(): Promise<void> {
 
   const server = new Server(
     { name: "forgejo-mcp", version: "1.0.0" },
-    { capabilities: { tools: {} } },
+    { capabilities: { tools: {}, resources: {} } },
   );
+
+  // Register the resource list handler
+  server.setRequestHandler(ListResourcesRequestSchema, async () => ({
+    resources: [
+      {
+        uri: "forgejo://server/info",
+        name: "Forgejo Server Info",
+        description:
+          "Connected Forgejo instance URL and authenticated user details",
+        mimeType: "application/json",
+      },
+    ],
+  }));
+
+  // Register the resource read handler
+  server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+    const { uri } = request.params;
+    if (uri === "forgejo://server/info") {
+      let payload: Record<string, unknown>;
+      try {
+        const user = await client.get<Record<string, unknown>>("/user");
+        payload = { url: config.baseUrl, user };
+      } catch (err) {
+        if (err instanceof ForgejoError) {
+          payload = {
+            url: config.baseUrl,
+            error: `${err.message} (status ${err.status})`,
+          };
+        } else {
+          throw err;
+        }
+      }
+      return {
+        contents: [
+          {
+            uri,
+            mimeType: "application/json",
+            text: JSON.stringify(payload, null, 2),
+          },
+        ],
+      };
+    }
+    throw new Error(`Unknown resource: ${uri}`);
+  });
 
   // Register the tool list handler
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
