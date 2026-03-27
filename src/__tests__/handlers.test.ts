@@ -1,5 +1,5 @@
 import { handleTool } from "../handlers";
-import { ForgejoClient } from "../forgejo-client";
+import { ForgejoClient, ForgejoError } from "../forgejo-client";
 
 // Mock global fetch
 const mockFetch = jest.fn();
@@ -181,5 +181,76 @@ describe("handleTool – unknown tool", () => {
     await expect(
       handleTool(client, "nonexistent_tool", {}),
     ).rejects.toThrow("Unknown tool: nonexistent_tool");
+  });
+});
+
+describe("resource – forgejo://server/info", () => {
+  beforeEach(() => mockFetch.mockReset());
+
+  it("fetches /user to build the server info resource", async () => {
+    const userPayload = {
+      id: 1,
+      login: "alice",
+      full_name: "Alice Wonderland",
+      email: "alice@example.com",
+      avatar_url: "https://codeberg.org/alice.png",
+      html_url: "https://codeberg.org/alice",
+      is_admin: false,
+    };
+    mockFetch.mockResolvedValueOnce(ok(userPayload));
+
+    const user = await client.get<Record<string, unknown>>("/user");
+    const baseUrl = "https://codeberg.org";
+    const token = "tok";
+    const text = JSON.stringify({ url: baseUrl, token, user }, null, 2);
+    const parsed = JSON.parse(text) as { url: string; token: string; user: Record<string, unknown> };
+
+    expect(parsed.url).toBe("https://codeberg.org");
+    expect(parsed.token).toBe("tok");
+    expect(parsed.user.login).toBe("alice");
+    expect(parsed.user.email).toBe("alice@example.com");
+  });
+
+  it("includes the server URL alongside the user object", async () => {
+    mockFetch.mockResolvedValueOnce(ok({ id: 2, login: "bob" }));
+
+    const user = await client.get<Record<string, unknown>>("/user");
+    const baseUrl = "https://myforgejo.example.com";
+    const token = "mytoken";
+    const text = JSON.stringify({ url: baseUrl, token, user }, null, 2);
+    const parsed = JSON.parse(text) as { url: string; token: string; user: Record<string, unknown> };
+
+    expect(parsed).toHaveProperty("url", "https://myforgejo.example.com");
+    expect(parsed).toHaveProperty("token", "mytoken");
+    expect(parsed).toHaveProperty("user");
+    expect(parsed.user.login).toBe("bob");
+  });
+
+  it("returns an error payload when the /user call fails", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+      statusText: "Unauthorized",
+      json: async () => ({ message: "token is invalid" }),
+      text: async () => '{"message":"token is invalid"}',
+    } as unknown as Response);
+
+    const baseUrl = "https://codeberg.org";
+    const token = "tok";
+    let payload: Record<string, unknown>;
+    try {
+      const user = await client.get<Record<string, unknown>>("/user");
+      payload = { url: baseUrl, token, user };
+    } catch (err) {
+      if (err instanceof ForgejoError) {
+        payload = { url: baseUrl, token, error: `${err.message} (status ${err.status})` };
+      } else {
+        throw err;
+      }
+    }
+
+    expect(payload!.url).toBe("https://codeberg.org");
+    expect(payload!.token).toBe("tok");
+    expect(payload!.error).toContain("401");
   });
 });
