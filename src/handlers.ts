@@ -1,5 +1,14 @@
 import { ForgejoClient, ForgejoError } from "./forgejo-client.js";
-import { Issue, Repository, User, Comment, Notification } from "./types.js";
+import {
+  Issue,
+  Repository,
+  User,
+  Comment,
+  Notification,
+  PullRequest,
+  PullRequestReview,
+  ChangedFile,
+} from "./types.js";
 
 type Params = Record<string, unknown>;
 
@@ -61,6 +70,66 @@ function formatComment(comment: Comment): string {
 }
 
 /**
+ * Format a pull request summary for display.
+ */
+function formatPullRequest(pr: PullRequest): string {
+  const labels =
+    pr.labels?.length > 0
+      ? pr.labels.map((l) => l.name).join(", ")
+      : "none";
+  const assignees =
+    pr.assignees && pr.assignees.length > 0
+      ? pr.assignees.map((a) => a.login).join(", ")
+      : "none";
+  return [
+    `PR #${pr.number}: ${pr.title}`,
+    `  State: ${pr.state}${pr.merged ? " (merged)" : ""}`,
+    `  Author: ${pr.user.login}`,
+    `  Head: ${pr.head.label} (${pr.head.sha.slice(0, 7)})`,
+    `  Base: ${pr.base.label}`,
+    `  Labels: ${labels}`,
+    `  Assignees: ${assignees}`,
+    `  Comments: ${pr.comments}`,
+    `  Mergeable: ${pr.mergeable}`,
+    `  Created: ${pr.created_at}`,
+    `  Updated: ${pr.updated_at}`,
+    `  URL: ${pr.html_url}`,
+    pr.body ? `  Body:\n${pr.body.slice(0, 500)}${pr.body.length > 500 ? "\n  [...]" : ""}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+/**
+ * Format a pull request review for display.
+ */
+function formatReview(review: PullRequestReview): string {
+  return [
+    `Review #${review.id} by ${review.reviewer.login}`,
+    `  State: ${review.state}`,
+    `  Submitted: ${review.submitted_at}`,
+    `  Commit: ${review.commit_id.slice(0, 7)}`,
+    review.body ? `  Body: ${review.body}` : "",
+    `  URL: ${review.html_url}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+/**
+ * Format a changed file for display.
+ */
+function formatChangedFile(file: ChangedFile): string {
+  return [
+    `${file.status}: ${file.filename}`,
+    `  +${file.additions} -${file.deletions} (${file.changes} changes)`,
+    file.previous_filename ? `  Renamed from: ${file.previous_filename}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+/**
  * Format a notification for display.
  */
 function formatNotification(n: Notification): string {
@@ -108,6 +177,24 @@ export async function handleTool(
         return await getUserInfo(client, args);
       case "list_notifications":
         return await listNotifications(client, args);
+      case "list_pull_requests":
+        return await listPullRequests(client, args);
+      case "get_pull_request":
+        return await getPullRequest(client, args);
+      case "create_pull_request":
+        return await createPullRequest(client, args);
+      case "edit_pull_request":
+        return await editPullRequest(client, args);
+      case "merge_pull_request":
+        return await mergePullRequest(client, args);
+      case "get_pull_request_diff":
+        return await getPullRequestDiff(client, args);
+      case "get_pull_request_files":
+        return await getPullRequestFiles(client, args);
+      case "list_pull_request_reviews":
+        return await listPullRequestReviews(client, args);
+      case "update_pull_request_branch":
+        return await updatePullRequestBranch(client, args);
       default:
         throw new Error(`Unknown tool: ${toolName}`);
     }
@@ -325,6 +412,212 @@ async function getUserInfo(
     `Profile: ${user.html_url}`,
     `Avatar: ${user.avatar_url}`,
   ].join("\n");
+}
+
+// ---------------------------------------------------------------------------
+// Pull Request implementations
+// ---------------------------------------------------------------------------
+
+async function listPullRequests(
+  client: ForgejoClient,
+  args: Params,
+): Promise<string> {
+  const { owner, repo } = args as { owner: string; repo: string };
+  const pulls = await client.get<PullRequest[]>(
+    `/repos/${owner}/${repo}/pulls`,
+    {
+      state: (args.state as string | undefined) ?? "open",
+      sort: args.sort as string | undefined,
+      labels: args.labels as string | undefined,
+      milestone: args.milestone as number | undefined,
+      page: (args.page as number | undefined) ?? 1,
+      limit: (args.limit as number | undefined) ?? 10,
+    },
+  );
+
+  if (!pulls || pulls.length === 0) {
+    return `No pull requests found in ${owner}/${repo}.`;
+  }
+  return `Found ${pulls.length} pull request(s) in ${owner}/${repo}:\n\n${pulls.map(formatPullRequest).join("\n\n")}`;
+}
+
+async function getPullRequest(
+  client: ForgejoClient,
+  args: Params,
+): Promise<string> {
+  const { owner, repo, index } = args as {
+    owner: string;
+    repo: string;
+    index: number;
+  };
+  const pr = await client.get<PullRequest>(
+    `/repos/${owner}/${repo}/pulls/${index}`,
+  );
+  return formatPullRequest(pr);
+}
+
+async function createPullRequest(
+  client: ForgejoClient,
+  args: Params,
+): Promise<string> {
+  const { owner, repo, title, body, head, base, assignees, labels, milestone } =
+    args as {
+      owner: string;
+      repo: string;
+      title: string;
+      body?: string;
+      head: string;
+      base: string;
+      assignees?: string[];
+      labels?: number[];
+      milestone?: number;
+    };
+  const pr = await client.post<PullRequest>(`/repos/${owner}/${repo}/pulls`, {
+    title,
+    body,
+    head,
+    base,
+    assignees,
+    labels,
+    milestone,
+  });
+  return `Pull request created successfully:\n\n${formatPullRequest(pr)}`;
+}
+
+async function editPullRequest(
+  client: ForgejoClient,
+  args: Params,
+): Promise<string> {
+  const { owner, repo, index, ...fields } = args as {
+    owner: string;
+    repo: string;
+    index: number;
+    [key: string]: unknown;
+  };
+  const pr = await client.patch<PullRequest>(
+    `/repos/${owner}/${repo}/pulls/${index}`,
+    fields,
+  );
+  return `Pull request updated successfully:\n\n${formatPullRequest(pr)}`;
+}
+
+async function mergePullRequest(
+  client: ForgejoClient,
+  args: Params,
+): Promise<string> {
+  const {
+    owner,
+    repo,
+    index,
+    Do,
+    merge_commit_id,
+    merge_message_field,
+    delete_branch_after_merge,
+    force_merge,
+    head_commit_id,
+    merge_when_checks_succeed,
+  } = args as {
+    owner: string;
+    repo: string;
+    index: number;
+    Do: string;
+    merge_commit_id?: string;
+    merge_message_field?: string;
+    delete_branch_after_merge?: boolean;
+    force_merge?: boolean;
+    head_commit_id?: string;
+    merge_when_checks_succeed?: boolean;
+  };
+  await client.post(`/repos/${owner}/${repo}/pulls/${index}/merge`, {
+    Do,
+    merge_commit_id,
+    merge_message_field,
+    delete_branch_after_merge,
+    force_merge,
+    head_commit_id,
+    merge_when_checks_succeed,
+  });
+  return `Pull request #${index} in ${owner}/${repo} merged successfully using '${Do}' method.`;
+}
+
+async function getPullRequestDiff(
+  client: ForgejoClient,
+  args: Params,
+): Promise<string> {
+  const { owner, repo, index } = args as {
+    owner: string;
+    repo: string;
+    index: number;
+  };
+  const diff = await client.getRaw(
+    `/repos/${owner}/${repo}/pulls/${index}.diff`,
+  );
+  if (!diff || diff.trim().length === 0) {
+    return `No diff found for pull request #${index} in ${owner}/${repo}.`;
+  }
+  return diff;
+}
+
+async function getPullRequestFiles(
+  client: ForgejoClient,
+  args: Params,
+): Promise<string> {
+  const { owner, repo, index } = args as {
+    owner: string;
+    repo: string;
+    index: number;
+  };
+  const files = await client.get<ChangedFile[]>(
+    `/repos/${owner}/${repo}/pulls/${index}/files`,
+    {
+      skip: args.skip as number | undefined,
+      limit: (args.limit as number | undefined) ?? 10,
+    },
+  );
+
+  if (!files || files.length === 0) {
+    return `No changed files in pull request #${index} in ${owner}/${repo}.`;
+  }
+  return `${files.length} changed file(s) in PR #${index}:\n\n${files.map(formatChangedFile).join("\n\n")}`;
+}
+
+async function listPullRequestReviews(
+  client: ForgejoClient,
+  args: Params,
+): Promise<string> {
+  const { owner, repo, index } = args as {
+    owner: string;
+    repo: string;
+    index: number;
+  };
+  const reviews = await client.get<PullRequestReview[]>(
+    `/repos/${owner}/${repo}/pulls/${index}/reviews`,
+    {
+      page: (args.page as number | undefined) ?? 1,
+      limit: (args.limit as number | undefined) ?? 10,
+    },
+  );
+
+  if (!reviews || reviews.length === 0) {
+    return `No reviews on pull request #${index} in ${owner}/${repo}.`;
+  }
+  return `${reviews.length} review(s) on PR #${index}:\n\n${reviews.map(formatReview).join("\n\n")}`;
+}
+
+async function updatePullRequestBranch(
+  client: ForgejoClient,
+  args: Params,
+): Promise<string> {
+  const { owner, repo, index, style } = args as {
+    owner: string;
+    repo: string;
+    index: number;
+    style?: string;
+  };
+  await client.post(`/repos/${owner}/${repo}/pulls/${index}/update`, {
+    style,
+  });
+  return `Pull request #${index} branch in ${owner}/${repo} updated successfully.`;
 }
 
 async function listNotifications(

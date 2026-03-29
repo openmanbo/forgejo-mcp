@@ -184,6 +184,260 @@ describe("handleTool – unknown tool", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Pull Request tool tests
+// ---------------------------------------------------------------------------
+
+const basePR = {
+  id: 1,
+  number: 5,
+  title: "Add new feature",
+  body: "This adds a great feature",
+  state: "open",
+  html_url: "https://codeberg.org/alice/repo/pulls/5",
+  diff_url: "https://codeberg.org/alice/repo/pulls/5.diff",
+  patch_url: "https://codeberg.org/alice/repo/pulls/5.patch",
+  created_at: "2024-06-01T00:00:00Z",
+  updated_at: "2024-06-02T00:00:00Z",
+  closed_at: null,
+  merged_at: null,
+  user: { id: 10, login: "alice", full_name: "Alice", email: "", avatar_url: "", html_url: "" },
+  assignees: [{ id: 11, login: "bob", full_name: "Bob", email: "", avatar_url: "", html_url: "" }],
+  labels: [{ id: 1, name: "enhancement", color: "00ff00", description: "", url: "" }],
+  milestone: null,
+  comments: 2,
+  head: { label: "alice:feature", ref: "feature", sha: "abc1234567890", repo_id: 1 },
+  base: { label: "alice:main", ref: "main", sha: "def4567890123", repo_id: 1 },
+  merged: false,
+  mergeable: true,
+  merged_by: null,
+  merge_base: "aaa",
+  merge_commit_sha: null,
+  is_locked: false,
+  allow_maintainer_edit: true,
+};
+
+describe("handleTool – list_pull_requests", () => {
+  beforeEach(() => mockFetch.mockReset());
+
+  it("returns formatted pull requests", async () => {
+    mockFetch.mockResolvedValueOnce(ok([basePR]));
+
+    const result = await handleTool(client, "list_pull_requests", {
+      owner: "alice",
+      repo: "repo",
+    });
+
+    expect(result).toContain("PR #5");
+    expect(result).toContain("Add new feature");
+    expect(result).toContain("alice");
+    expect(result).toContain("enhancement");
+    expect(result).toContain("bob");
+    expect(result).toContain("feature");
+  });
+
+  it("returns a no-results message when empty", async () => {
+    mockFetch.mockResolvedValueOnce(ok([]));
+    const result = await handleTool(client, "list_pull_requests", {
+      owner: "alice",
+      repo: "repo",
+    });
+    expect(result).toContain("No pull requests found");
+  });
+});
+
+describe("handleTool – get_pull_request", () => {
+  beforeEach(() => mockFetch.mockReset());
+
+  it("returns formatted pull request details", async () => {
+    mockFetch.mockResolvedValueOnce(ok(basePR));
+
+    const result = await handleTool(client, "get_pull_request", {
+      owner: "alice",
+      repo: "repo",
+      index: 5,
+    });
+
+    expect(result).toContain("PR #5");
+    expect(result).toContain("Add new feature");
+    expect(result).toContain("Head: alice:feature");
+    expect(result).toContain("Base: alice:main");
+    expect(result).toContain("Mergeable: true");
+  });
+});
+
+describe("handleTool – create_pull_request", () => {
+  beforeEach(() => mockFetch.mockReset());
+
+  it("returns the created pull request", async () => {
+    mockFetch.mockResolvedValueOnce(ok(basePR));
+
+    const result = await handleTool(client, "create_pull_request", {
+      owner: "alice",
+      repo: "repo",
+      title: "Add new feature",
+      head: "feature",
+      base: "main",
+    });
+
+    expect(result).toContain("Pull request created successfully");
+    expect(result).toContain("Add new feature");
+    expect(result).toContain("#5");
+  });
+});
+
+describe("handleTool – merge_pull_request", () => {
+  beforeEach(() => mockFetch.mockReset());
+
+  it("returns success message after merge", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 204,
+      statusText: "No Content",
+      json: async () => ({}),
+      text: async () => "",
+    } as unknown as Response);
+
+    const result = await handleTool(client, "merge_pull_request", {
+      owner: "alice",
+      repo: "repo",
+      index: 5,
+      Do: "squash",
+    });
+
+    expect(result).toContain("merged successfully");
+    expect(result).toContain("squash");
+  });
+});
+
+describe("handleTool – get_pull_request_diff", () => {
+  beforeEach(() => mockFetch.mockReset());
+
+  it("returns the raw diff text", async () => {
+    const diffText = "diff --git a/file.txt b/file.txt\n--- a/file.txt\n+++ b/file.txt\n@@ -1 +1 @@\n-old\n+new";
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      text: async () => diffText,
+    } as unknown as Response);
+
+    const result = await handleTool(client, "get_pull_request_diff", {
+      owner: "alice",
+      repo: "repo",
+      index: 5,
+    });
+
+    expect(result).toContain("diff --git");
+    expect(result).toContain("-old");
+    expect(result).toContain("+new");
+  });
+});
+
+describe("handleTool – get_pull_request_files", () => {
+  beforeEach(() => mockFetch.mockReset());
+
+  it("returns formatted changed files", async () => {
+    mockFetch.mockResolvedValueOnce(
+      ok([
+        {
+          filename: "src/main.ts",
+          status: "modified",
+          additions: 10,
+          deletions: 3,
+          changes: 13,
+          html_url: "https://codeberg.org/alice/repo/src/main.ts",
+          contents_url: "",
+        },
+        {
+          filename: "src/old.ts",
+          status: "renamed",
+          additions: 0,
+          deletions: 0,
+          changes: 0,
+          html_url: "",
+          contents_url: "",
+          previous_filename: "src/legacy.ts",
+        },
+      ]),
+    );
+
+    const result = await handleTool(client, "get_pull_request_files", {
+      owner: "alice",
+      repo: "repo",
+      index: 5,
+    });
+
+    expect(result).toContain("src/main.ts");
+    expect(result).toContain("+10 -3");
+    expect(result).toContain("modified");
+    expect(result).toContain("Renamed from: src/legacy.ts");
+  });
+});
+
+describe("handleTool – list_pull_request_reviews", () => {
+  beforeEach(() => mockFetch.mockReset());
+
+  it("returns formatted reviews", async () => {
+    mockFetch.mockResolvedValueOnce(
+      ok([
+        {
+          id: 1,
+          reviewer: { id: 11, login: "bob", full_name: "Bob", email: "", avatar_url: "", html_url: "" },
+          state: "APPROVED",
+          body: "Looks good!",
+          html_url: "https://codeberg.org/alice/repo/pulls/5#review-1",
+          submitted_at: "2024-06-02T12:00:00Z",
+          commit_id: "abc1234567890",
+        },
+      ]),
+    );
+
+    const result = await handleTool(client, "list_pull_request_reviews", {
+      owner: "alice",
+      repo: "repo",
+      index: 5,
+    });
+
+    expect(result).toContain("bob");
+    expect(result).toContain("APPROVED");
+    expect(result).toContain("Looks good!");
+  });
+
+  it("returns a no-results message when empty", async () => {
+    mockFetch.mockResolvedValueOnce(ok([]));
+    const result = await handleTool(client, "list_pull_request_reviews", {
+      owner: "alice",
+      repo: "repo",
+      index: 5,
+    });
+    expect(result).toContain("No reviews");
+  });
+});
+
+describe("handleTool – update_pull_request_branch", () => {
+  beforeEach(() => mockFetch.mockReset());
+
+  it("returns success message", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 204,
+      statusText: "No Content",
+      json: async () => ({}),
+      text: async () => "",
+    } as unknown as Response);
+
+    const result = await handleTool(client, "update_pull_request_branch", {
+      owner: "alice",
+      repo: "repo",
+      index: 5,
+      style: "rebase",
+    });
+
+    expect(result).toContain("updated successfully");
+  });
+});
+
 describe("resource – forgejo://server/info", () => {
   beforeEach(() => mockFetch.mockReset());
 

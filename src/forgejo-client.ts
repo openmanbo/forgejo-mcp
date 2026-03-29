@@ -85,6 +85,48 @@ export class ForgejoClient {
     return this.request<T>("GET", path, params);
   }
 
+  async getRaw(
+    path: string,
+    params?: Record<string, string | number | boolean | undefined>,
+  ): Promise<string> {
+    let url = `${this.baseUrl}${path}`;
+
+    if (params) {
+      const query = new URLSearchParams();
+      for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== null) {
+          query.set(key, String(value));
+        }
+      }
+      const qs = query.toString();
+      if (qs) url += `?${qs}`;
+    }
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        ...this.headers,
+        Accept: "text/plain",
+      },
+    });
+
+    if (!response.ok) {
+      let errorBody: unknown;
+      try {
+        errorBody = await response.text();
+      } catch {
+        errorBody = undefined;
+      }
+      throw new ForgejoError(
+        `Forgejo API error: ${response.status} ${response.statusText}`,
+        response.status,
+        errorBody,
+      );
+    }
+
+    return response.text();
+  }
+
   async post<T>(path: string, body?: unknown): Promise<T> {
     return this.request<T>("POST", path, undefined, body);
   }

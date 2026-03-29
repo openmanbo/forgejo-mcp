@@ -20,6 +20,15 @@ instance as an authenticated user.
 | `get_user` | `GET /api/v1/user` | Get authenticated user profile |
 | `get_user_info` | `GET /api/v1/users/{username}` | Get any user's public profile |
 | `list_notifications` | `GET /api/v1/notifications` | List notifications |
+| `list_pull_requests` | `GET /api/v1/repos/{owner}/{repo}/pulls` | List pull requests in a repository |
+| `get_pull_request` | `GET /api/v1/repos/{owner}/{repo}/pulls/{index}` | Get a single pull request |
+| `create_pull_request` | `POST /api/v1/repos/{owner}/{repo}/pulls` | Create a new pull request |
+| `edit_pull_request` | `PATCH /api/v1/repos/{owner}/{repo}/pulls/{index}` | Edit a pull request |
+| `merge_pull_request` | `POST /api/v1/repos/{owner}/{repo}/pulls/{index}/merge` | Merge a pull request |
+| `get_pull_request_diff` | `GET /api/v1/repos/{owner}/{repo}/pulls/{index}.diff` | Get PR diff as plain text |
+| `get_pull_request_files` | `GET /api/v1/repos/{owner}/{repo}/pulls/{index}/files` | List files changed in a PR |
+| `list_pull_request_reviews` | `GET /api/v1/repos/{owner}/{repo}/pulls/{index}/reviews` | List reviews on a PR |
+| `update_pull_request_branch` | `POST /api/v1/repos/{owner}/{repo}/pulls/{index}/update` | Update a PR branch |
 
 ## Requirements
 

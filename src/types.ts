@@ -92,3 +92,62 @@ export interface Notification {
   pinned: boolean;
   updated_at: string;
 }
+
+export interface PullRequest {
+  id: number;
+  number: number;
+  title: string;
+  body: string;
+  state: string;
+  html_url: string;
+  diff_url: string;
+  patch_url: string;
+  created_at: string;
+  updated_at: string;
+  closed_at: string | null;
+  merged_at: string | null;
+  user: User;
+  assignees: User[] | null;
+  labels: Label[];
+  milestone: Milestone | null;
+  comments: number;
+  head: PRBranchInfo;
+  base: PRBranchInfo;
+  merged: boolean;
+  mergeable: boolean;
+  merged_by: User | null;
+  merge_base: string;
+  merge_commit_sha: string | null;
+  is_locked: boolean;
+  allow_maintainer_edit: boolean;
+  repository?: Repository;
+}
+
+export interface PRBranchInfo {
+  label: string;
+  ref: string;
+  sha: string;
+  repo_id: number;
+  repo?: Repository;
+}
+
+export interface PullRequestReview {
+  id: number;
+  reviewer: User;
+  state: string;
+  body: string;
+  html_url: string;
+  submitted_at: string;
+  commit_id: string;
+}
+
+export interface ChangedFile {
+  filename: string;
+  status: string;
+  additions: number;
+  deletions: number;
+  changes: number;
+  html_url: string;
+  contents_url: string;
+  previous_filename?: string;
+}
