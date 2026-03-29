@@ -134,7 +134,7 @@ function formatChangedFile(file: ChangedFile): string {
  */
 function formatNotification(n: Notification): string {
   return [
-    `[${n.unread ? "UNREAD" : "read"}] ${n.subject.type}: ${n.subject.title}`,
+    `Notification #${n.id} [${n.unread ? "UNREAD" : "read"}] ${n.subject.type}: ${n.subject.title}`,
     `  Repo: ${n.repository.full_name}`,
     `  State: ${n.subject.state}`,
     `  Updated: ${n.updated_at}`,
@@ -646,7 +646,11 @@ async function markNotificationRead(
   args: Params,
 ): Promise<string> {
   const id = args.id as number;
-  await client.patch(`/notifications/threads/${id}`);
+  await client.patch(
+    `/notifications/threads/${id}`,
+    undefined,
+    { "to-status": "read" },
+  );
   return `Notification thread ${id} marked as read.`;
 }
 
@@ -654,10 +658,12 @@ async function markAllNotificationsRead(
   client: ForgejoClient,
   args: Params,
 ): Promise<string> {
-  const body: Record<string, unknown> = {};
+  const params: Record<string, string | number | boolean | undefined> = {
+    "to-status": "read",
+  };
   if (args.last_read_at) {
-    body.last_read_at = args.last_read_at as string;
+    params.last_read_at = args.last_read_at as string;
   }
-  await client.put("/notifications", body);
+  await client.put("/notifications", undefined, params);
   return "All notifications marked as read.";
 }

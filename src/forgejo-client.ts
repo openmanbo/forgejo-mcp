@@ -71,8 +71,10 @@ export class ForgejoClient {
       );
     }
 
-    if (response.status === 204) {
-      return {} as T;
+    if (response.status === 204 || response.status === 205) {
+      const text = await response.text();
+      if (!text) return {} as T;
+      return JSON.parse(text) as T;
     }
 
     return response.json() as Promise<T>;
@@ -131,15 +133,23 @@ export class ForgejoClient {
     return this.request<T>("POST", path, undefined, body);
   }
 
-  async patch<T>(path: string, body?: unknown): Promise<T> {
-    return this.request<T>("PATCH", path, undefined, body);
+  async patch<T>(
+    path: string,
+    body?: unknown,
+    params?: Record<string, string | number | boolean | undefined>,
+  ): Promise<T> {
+    return this.request<T>("PATCH", path, params, body);
   }
 
   async delete<T>(path: string): Promise<T> {
     return this.request<T>("DELETE", path);
   }
 
-  async put<T>(path: string, body?: unknown): Promise<T> {
-    return this.request<T>("PUT", path, undefined, body);
+  async put<T>(
+    path: string,
+    body?: unknown,
+    params?: Record<string, string | number | boolean | undefined>,
+  ): Promise<T> {
+    return this.request<T>("PUT", path, params, body);
   }
 }
