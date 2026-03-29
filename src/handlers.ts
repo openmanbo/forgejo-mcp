@@ -177,6 +177,10 @@ export async function handleTool(
         return await getUserInfo(client, args);
       case "list_notifications":
         return await listNotifications(client, args);
+      case "mark_notification_read":
+        return await markNotificationRead(client, args);
+      case "mark_all_notifications_read":
+        return await markAllNotificationsRead(client, args);
       case "list_pull_requests":
         return await listPullRequests(client, args);
       case "get_pull_request":
@@ -635,4 +639,25 @@ async function listNotifications(
     return "No notifications found.";
   }
   return `${notifications.length} notification(s):\n\n${notifications.map(formatNotification).join("\n\n")}`;
+}
+
+async function markNotificationRead(
+  client: ForgejoClient,
+  args: Params,
+): Promise<string> {
+  const id = args.id as number;
+  await client.patch(`/notifications/threads/${id}`);
+  return `Notification thread ${id} marked as read.`;
+}
+
+async function markAllNotificationsRead(
+  client: ForgejoClient,
+  args: Params,
+): Promise<string> {
+  const body: Record<string, unknown> = {};
+  if (args.last_read_at) {
+    body.last_read_at = args.last_read_at as string;
+  }
+  await client.put("/notifications", body);
+  return "All notifications marked as read.";
 }

@@ -377,6 +377,40 @@ export const TOOLS: Tool[] = [
       },
     },
   },
+  {
+    name: "mark_notification_read",
+    description:
+      "Mark a single notification thread as read. " +
+      "Uses PATCH /api/v1/notifications/threads/{id}.",
+    inputSchema: {
+      type: "object",
+      required: ["id"],
+      properties: {
+        id: {
+          type: "integer",
+          description: "Notification thread ID.",
+          minimum: 1,
+        },
+      },
+    },
+  },
+  {
+    name: "mark_all_notifications_read",
+    description:
+      "Mark all notifications as read. Optionally filter by date. " +
+      "Uses PUT /api/v1/notifications.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        last_read_at: {
+          type: "string",
+          description:
+            "Mark notifications as read up to this date (ISO 8601 / RFC 3339). " +
+            "Defaults to current time if omitted.",
+        },
+      },
+    },
+  },
 
   // -------------------------------------------------------------------------
   // Pull Request tools
