@@ -7,6 +7,8 @@ import {
   Notification,
   PullRequest,
   PullRequestReview,
+  PullRequestReviewComment,
+  CreateReviewComment,
   ChangedFile,
 } from "./types.js";
 
@@ -197,6 +199,18 @@ export async function handleTool(
         return await getPullRequestFiles(client, args);
       case "list_pull_request_reviews":
         return await listPullRequestReviews(client, args);
+      case "create_pull_request_review":
+        return await createPullRequestReview(client, args);
+      case "get_pull_request_review":
+        return await getPullRequestReview(client, args);
+      case "submit_pull_request_review":
+        return await submitPullRequestReview(client, args);
+      case "delete_pull_request_review":
+        return await deletePullRequestReview(client, args);
+      case "dismiss_pull_request_review":
+        return await dismissPullRequestReview(client, args);
+      case "get_pull_request_review_comments":
+        return await getPullRequestReviewComments(client, args);
       case "update_pull_request_branch":
         return await updatePullRequestBranch(client, args);
       default:
@@ -606,6 +620,127 @@ async function listPullRequestReviews(
     return `No reviews on pull request #${index} in ${owner}/${repo}.`;
   }
   return `${reviews.length} review(s) on PR #${index}:\n\n${reviews.map(formatReview).join("\n\n")}`;
+}
+
+async function createPullRequestReview(
+  client: ForgejoClient,
+  args: Params,
+): Promise<string> {
+  const { owner, repo, index, event, body, commit_id, comments } = args as {
+    owner: string;
+    repo: string;
+    index: number;
+    event: string;
+    body?: string;
+    commit_id?: string;
+    comments?: CreateReviewComment[];
+  };
+  const review = await client.post<PullRequestReview>(
+    `/repos/${owner}/${repo}/pulls/${index}/reviews`,
+    { body, event, commit_id, comments },
+  );
+  return `Review created successfully:\n\n${formatReview(review)}`;
+}
+
+async function getPullRequestReview(
+  client: ForgejoClient,
+  args: Params,
+): Promise<string> {
+  const { owner, repo, index, review_id } = args as {
+    owner: string;
+    repo: string;
+    index: number;
+    review_id: number;
+  };
+  const review = await client.get<PullRequestReview>(
+    `/repos/${owner}/${repo}/pulls/${index}/reviews/${review_id}`,
+  );
+  return formatReview(review);
+}
+
+async function submitPullRequestReview(
+  client: ForgejoClient,
+  args: Params,
+): Promise<string> {
+  const { owner, repo, index, review_id, event, body } = args as {
+    owner: string;
+    repo: string;
+    index: number;
+    review_id: number;
+    event: string;
+    body?: string;
+  };
+  const review = await client.post<PullRequestReview>(
+    `/repos/${owner}/${repo}/pulls/${index}/reviews/${review_id}`,
+    { body, event },
+  );
+  return `Review submitted successfully:\n\n${formatReview(review)}`;
+}
+
+async function deletePullRequestReview(
+  client: ForgejoClient,
+  args: Params,
+): Promise<string> {
+  const { owner, repo, index, review_id } = args as {
+    owner: string;
+    repo: string;
+    index: number;
+    review_id: number;
+  };
+  await client.delete(
+    `/repos/${owner}/${repo}/pulls/${index}/reviews/${review_id}`,
+  );
+  return `Review #${review_id} on PR #${index} in ${owner}/${repo} deleted successfully.`;
+}
+
+async function dismissPullRequestReview(
+  client: ForgejoClient,
+  args: Params,
+): Promise<string> {
+  const { owner, repo, index, review_id, message } = args as {
+    owner: string;
+    repo: string;
+    index: number;
+    review_id: number;
+    message: string;
+  };
+  const review = await client.post<PullRequestReview>(
+    `/repos/${owner}/${repo}/pulls/${index}/reviews/${review_id}/dismissals`,
+    { message },
+  );
+  return `Review dismissed successfully:\n\n${formatReview(review)}`;
+}
+
+function formatReviewComment(comment: PullRequestReviewComment): string {
+  return [
+    `Comment #${comment.id} by ${comment.user.login} on ${comment.path}`,
+    comment.position !== undefined ? `  Line: ${comment.position}` : "",
+    `  Body: ${comment.body}`,
+    comment.diff_hunk ? `  Diff hunk:\n${comment.diff_hunk}` : "",
+    `  Created: ${comment.created_at}`,
+    `  URL: ${comment.html_url}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+async function getPullRequestReviewComments(
+  client: ForgejoClient,
+  args: Params,
+): Promise<string> {
+  const { owner, repo, index, review_id } = args as {
+    owner: string;
+    repo: string;
+    index: number;
+    review_id: number;
+  };
+  const comments = await client.get<PullRequestReviewComment[]>(
+    `/repos/${owner}/${repo}/pulls/${index}/reviews/${review_id}/comments`,
+  );
+  if (!comments || comments.length === 0) {
+    return `No comments on review #${review_id} for PR #${index} in ${owner}/${repo}.`;
+  }
+  return `${comments.length} comment(s) on review #${review_id}:\n\n${comments.map(formatReviewComment).join("\n\n")}`;
 }
 
 async function updatePullRequestBranch(
