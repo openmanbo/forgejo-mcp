@@ -327,6 +327,16 @@ export const TOOLS: Tool[] = [
     },
   },
   {
+    name: "get_git_token",
+    description:
+      "Get the git access token and the Forgejo server URL configured for this MCP server. " +
+      "Useful when you need to perform git operations (clone, push, pull) that require authentication.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+    },
+  },
+  {
     name: "get_user",
     description:
       "Get the profile of the currently authenticated user. Uses GET /api/v1/user.",
