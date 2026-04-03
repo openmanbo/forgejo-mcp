@@ -83,6 +83,7 @@ describe("ForgejoClient", () => {
       json: async () => {
         throw new Error("no body");
       },
+      text: async () => "",
     } as unknown as Response);
 
     const result = await client.delete("/repos/owner/repo/issues/1");
