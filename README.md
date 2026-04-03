@@ -35,20 +35,19 @@ instance as an authenticated user.
 - Node.js ≥ 18
 - A Forgejo personal access token
 
+## Installation
+
+```bash
+npm install -g forgejo-mcp
+```
+
 ## Setup
 
-1. **Install dependencies and build:**
-
-   ```bash
-   npm install
-   npm run build
-   ```
-
-2. **Generate a Forgejo token:**  
+1. **Generate a Forgejo token:**  
    Go to `<your-forgejo-instance>/user/settings/applications` and create a
    token with the scopes you need (at minimum `read:issue` for searching).
 
-3. **Configure environment variables:**
+2. **Configure environment variables:**
 
    ```bash
    export FORGEJO_URL=https://codeberg.org   # or your own instance
@@ -58,9 +57,9 @@ instance as an authenticated user.
 ## Running the server
 
 ```bash
-npm start
-# or directly:
-node dist/index.js
+forgejo-mcp
+# or with npx (no install needed):
+npx forgejo-mcp
 ```
 
 The server communicates over **stdio** using the MCP protocol.
@@ -73,8 +72,8 @@ The server communicates over **stdio** using the MCP protocol.
 {
   "mcpServers": {
     "forgejo": {
-      "command": "node",
-      "args": ["/path/to/forgejo-mcp/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "forgejo-mcp"],
       "env": {
         "FORGEJO_URL": "https://codeberg.org",
         "FORGEJO_TOKEN": "your_token_here"
@@ -91,8 +90,8 @@ The server communicates over **stdio** using the MCP protocol.
   "servers": {
     "forgejo": {
       "type": "stdio",
-      "command": "node",
-      "args": ["dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "forgejo-mcp"],
       "env": {
         "FORGEJO_URL": "https://codeberg.org",
         "FORGEJO_TOKEN": "${env:FORGEJO_TOKEN}"
@@ -105,8 +104,11 @@ The server communicates over **stdio** using the MCP protocol.
 ## Development
 
 ```bash
+git clone https://github.com/openmanbo/forgejo-mcp.git
+cd forgejo-mcp
+npm install
+npm run build
 npm test        # run unit tests
-npm run build   # compile TypeScript → dist/
 ```
 
 ## License

@@ -6,16 +6,29 @@
   "bin": {
     "forgejo-mcp": "dist/index.js"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "lint": "eslint src --ext .ts",
-    "test": "jest"
+    "test": "jest",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "keywords": ["mcp", "forgejo", "gitea", "ai", "agent"],
-  "author": "",
+  "author": "openmanbo",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/openmanbo/forgejo-mcp.git"
+  },
+  "homepage": "https://github.com/openmanbo/forgejo-mcp#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.28.0"
   },
