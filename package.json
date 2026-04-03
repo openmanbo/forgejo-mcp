@@ -1,6 +1,6 @@
 {
   "name": "@openmanbo/forgejo-mcp",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "MCP server for Forgejo - enables AI agents to interact with Forgejo instances",
   "main": "dist/index.js",
   "bin": {
