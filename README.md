@@ -38,7 +38,7 @@ instance as an authenticated user.
 ## Installation
 
 ```bash
-npm install -g forgejo-mcp
+npm install -g @openmanbo/forgejo-mcp
 ```
 
 ## Setup
@@ -59,7 +59,7 @@ npm install -g forgejo-mcp
 ```bash
 forgejo-mcp
 # or with npx (no install needed):
-npx forgejo-mcp
+npx @openmanbo/forgejo-mcp
 ```
 
 The server communicates over **stdio** using the MCP protocol.
@@ -73,7 +73,7 @@ The server communicates over **stdio** using the MCP protocol.
   "mcpServers": {
     "forgejo": {
       "command": "npx",
-      "args": ["-y", "forgejo-mcp"],
+      "args": ["-y", "@openmanbo/forgejo-mcp"],
       "env": {
         "FORGEJO_URL": "https://codeberg.org",
         "FORGEJO_TOKEN": "your_token_here"
@@ -91,7 +91,7 @@ The server communicates over **stdio** using the MCP protocol.
     "forgejo": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "forgejo-mcp"],
+      "args": ["-y", "@openmanbo/forgejo-mcp"],
       "env": {
         "FORGEJO_URL": "https://codeberg.org",
         "FORGEJO_TOKEN": "${env:FORGEJO_TOKEN}"
