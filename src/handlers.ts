@@ -197,6 +197,8 @@ export async function handleTool(
         return await getPullRequestDiff(client, args);
       case "get_pull_request_files":
         return await getPullRequestFiles(client, args);
+      case "check_pull_request_status":
+        return await checkPullRequestStatus(client, args);
       case "list_pull_request_reviews":
         return await listPullRequestReviews(client, args);
       case "create_pull_request_review":
@@ -597,6 +599,45 @@ async function getPullRequestFiles(
     return `No changed files in pull request #${index} in ${owner}/${repo}.`;
   }
   return `${files.length} changed file(s) in PR #${index}:\n\n${files.map(formatChangedFile).join("\n\n")}`;
+}
+
+async function checkPullRequestStatus(
+  client: ForgejoClient,
+  args: Params,
+): Promise<string> {
+  const { owner, repo, index } = args as {
+    owner: string;
+    repo: string;
+    index: number;
+  };
+  const pr = await client.get<PullRequest>(
+    `/repos/${owner}/${repo}/pulls/${index}`,
+  );
+
+  let conflictStatus: string;
+  if (pr.merged) {
+    conflictStatus = "Already merged";
+  } else if (pr.mergeable) {
+    conflictStatus = "No conflicts (mergeable)";
+  } else {
+    conflictStatus = "Has conflicts (not mergeable)";
+  }
+
+  return [
+    `PR #${pr.number}: ${pr.title}`,
+    `  State: ${pr.state}${pr.merged ? " (merged)" : ""}`,
+    `  Conflict Status: ${conflictStatus}`,
+    `  Mergeable: ${pr.mergeable}`,
+    `  Merged: ${pr.merged}`,
+    pr.merged_by ? `  Merged By: ${pr.merged_by.login}` : "",
+    pr.merged_at ? `  Merged At: ${pr.merged_at}` : "",
+    pr.merge_commit_sha ? `  Merge Commit: ${pr.merge_commit_sha}` : "",
+    `  Head: ${pr.head.label} (${pr.head.sha.slice(0, 7)})`,
+    `  Base: ${pr.base.label}`,
+    `  URL: ${pr.html_url}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 async function listPullRequestReviews(

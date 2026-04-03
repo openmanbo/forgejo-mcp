@@ -694,6 +694,32 @@ export const TOOLS: Tool[] = [
     },
   },
   {
+    name: "check_pull_request_status",
+    description:
+      "Check the conflict and merge status of a pull request. " +
+      "Returns whether the PR is mergeable, merged, and its current state. " +
+      "Uses GET /api/v1/repos/{owner}/{repo}/pulls/{index}.",
+    inputSchema: {
+      type: "object",
+      required: ["owner", "repo", "index"],
+      properties: {
+        owner: {
+          type: "string",
+          description: "Repository owner.",
+        },
+        repo: {
+          type: "string",
+          description: "Repository name.",
+        },
+        index: {
+          type: "integer",
+          description: "Pull request number.",
+          minimum: 1,
+        },
+      },
+    },
+  },
+  {
     name: "list_pull_request_reviews",
     description:
       "List reviews on a pull request. " +
